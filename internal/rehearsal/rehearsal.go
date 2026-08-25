@@ -36,7 +36,10 @@ func (s *Service) AddEvent(repID string, src model.SourceKind, seq int, actor mo
 	if err != nil {
 		return nil, err
 	}
-	if rep.State == model.StatePending {
+	// 冻结边界：演练版本冻结后输入不可变，拒绝任何新事件导入。
+	// 与 UpdateAnchor 一致，以 StateFrozen 作为不可变边界；pending/reviewable
+	// 仍允许幂等重导与再次复核。
+	if rep.State == model.StateFrozen {
 		return nil, model.ErrFrozenRehearsal
 	}
 	if rawTs <= 0 {

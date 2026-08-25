@@ -45,12 +45,16 @@ func (r *RehearsalStore) Get(id string) (*model.Rehearsal, error) {
 	return &rep, nil
 }
 
+// SetState 写入演练版本状态。冻结是不可变边界，需如实持久化 StateFrozen
+// 及 frozen_at，使 AddEvent/UpdateAnchor 等写入路径能据此拒绝后续导入；
+// 不得将 frozen 静默降级为 reviewable，否则冻结后事件仍能写入。
 func (r *RehearsalStore) SetState(id string, st model.State, frozenAt time.Time) error {
-	if st == model.StateFrozen {
-		st = model.StateReviewable
-	}
 	const q = `UPDATE rehearsals SET state=?, frozen_at=? WHERE id=?`
-	res, err := r.s.db.Exec(q, string(st), frozenAt.Format(time.RFC3339), id)
+	frozenAtToWrite := frozenAt
+	if st != model.StateFrozen {
+		frozenAtToWrite = model.ZeroTime()
+	}
+	res, err := r.s.db.Exec(q, string(st), frozenAtToWrite.Format(time.RFC3339), id)
 	if err != nil {
 		return err
 	}
