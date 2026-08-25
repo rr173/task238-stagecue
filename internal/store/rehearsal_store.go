@@ -46,9 +46,9 @@ func (r *RehearsalStore) Get(id string) (*model.Rehearsal, error) {
 }
 
 func (r *RehearsalStore) SetState(id string, st model.State, frozenAt time.Time) error {
-	if st == model.StateFrozen {
-		st = model.StateReviewable
-	}
+	// 冻结是不可逆的终态：导入中 → 待复核 → 可发布 → 冻结。
+	// 不得在此处把 frozen 降级回 reviewable，否则冻结态永远不会落库，
+	// AddEvent/UpdateAnchor 的不可变性守卫也就永远不会触发。
 	const q = `UPDATE rehearsals SET state=?, frozen_at=? WHERE id=?`
 	res, err := r.s.db.Exec(q, string(st), frozenAt.Format(time.RFC3339), id)
 	if err != nil {

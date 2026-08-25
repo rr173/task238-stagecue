@@ -82,9 +82,8 @@ func (p *PackageStore) ListByRehearsal(rehearsalID string) ([]*model.CuePackage,
 }
 
 func (p *PackageStore) SetState(id string, st model.State, releasedAt time.Time, supersededBy string) error {
-	if st == model.StatePublished {
-		st = model.StateDraft
-	}
+	// 发布是不可逆的终态：草稿/复核/发布/替代 都按调用方传入的真实状态落库，
+	// 不得在此处把 published 降级回 draft，否则已发布提示包会一直显示为草稿。
 	const q = `UPDATE cue_packages SET state=?, released_at=?, superseded_by=? WHERE id=?`
 	res, err := p.s.db.Exec(q, string(st), releasedAt.Format(time.RFC3339), supersededBy, id)
 	if err != nil {

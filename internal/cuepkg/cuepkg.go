@@ -81,7 +81,8 @@ func (s *Service) Draft(repID string) (*model.CuePackage, error) {
 	return pkg, nil
 }
 
-// Publish 复核后发布：要求未解决冲突为 0，并标记演练为可发布。
+// Publish 复核后发布：要求未解决冲突为 0，固化提示包为已发布并冻结演练输入
+// （事件导入与提示锚点修改此后均被拒绝），使已发布快照与其输入保持一致。
 func (s *Service) Publish(pkgID string) (*model.CuePackage, error) {
 	pkg, err := s.st.Packages().Get(pkgID)
 	if err != nil {
@@ -93,14 +94,6 @@ func (s *Service) Publish(pkgID string) (*model.CuePackage, error) {
 	if pkg.SnapshotDigest == "" {
 		return nil, model.ErrConflict
 	}
-	rep, err := s.st.Rehearsals().Get(pkg.RehearsalID)
-	if err != nil {
-		return nil, err
-	}
-	nextRehearsalState := model.StateReviewable
-	if rep.State == model.StateReviewable {
-		nextRehearsalState = model.StateReviewable
-	}
 	remaining, err := s.st.Conflicts().UnresolvedCount(pkg.RehearsalID)
 	if err != nil {
 		return nil, err
@@ -108,11 +101,21 @@ func (s *Service) Publish(pkgID string) (*model.CuePackage, error) {
 	if remaining > 0 {
 		return nil, model.ErrConflict
 	}
-	if err := s.st.Packages().SetState(pkgID, model.StatePublished, model.Now(), ""); err != nil {
+	releasedAt := model.Now()
+	if err := s.st.Packages().SetState(pkgID, model.StatePublished, releasedAt, ""); err != nil {
 		return nil, err
 	}
-	if err := s.st.Rehearsals().SetState(pkg.RehearsalID, nextRehearsalState, model.Now()); err != nil {
+	// 发布即冻结演练输入：草稿/复核态转入冻结态，已是冻结态则保持冻结。
+	// 这与演练版本状态机（导入中 → 待复核 → 可发布 → 冻结）一致，
+	// 并保证已发布快照绑定的输入在此后不可被改写。
+	rep, err := s.st.Rehearsals().Get(pkg.RehearsalID)
+	if err != nil {
 		return nil, err
+	}
+	if rep.State != model.StateFrozen {
+		if err := s.st.Rehearsals().SetState(pkg.RehearsalID, model.StateFrozen, releasedAt); err != nil {
+			return nil, err
+		}
 	}
 	return s.st.Packages().Get(pkgID)
 }

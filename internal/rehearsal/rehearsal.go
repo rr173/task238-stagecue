@@ -30,6 +30,7 @@ func (s *Service) Create(name, show string) (*model.Rehearsal, error) {
 }
 
 // AddEvent 导入一条事件（按 seq 幂等）。
+// 演练输入冻结后（已发布提示包绑定的输入）拒绝改写，保证已发布快照不变。
 func (s *Service) AddEvent(repID string, src model.SourceKind, seq int, actor model.ActorKind,
 	role model.EventRole, label string, rawTs int64, device string) (*model.StageEvent, error) {
 	rep, err := s.st.Rehearsals().Get(repID)
