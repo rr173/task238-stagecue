@@ -1,4 +1,4 @@
-基于 Go 实现的戏剧舞台灯光提示时序复核 Web 项目，一款后端服务，完成场次脚本事件与时间校正、灯光提示与设备响应时序对齐、互斥照明与机械动作的冲突检测、豁免裁决与可发布提示包版本固化。
+基于 Go 实现的戏剧舞台灯光提示时序复核全栈 Web 应用，提供时间线与冲突证据页面，并完成场次脚本事件校正、照明/机械动作冲突检测、豁免裁决与提示包固化。
 
 # BENZHI 评测说明
 
@@ -6,7 +6,7 @@
 
 ## 项目类型
 - 领域：舞台技术 / 演出安全时序复核
-- 形态：后端服务（HTTP API 前缀 `/api`），含 SQLite 持久化与重启恢复
+- 形态：全栈 Web 应用（浏览器入口 `/`、HTTP API 前缀 `/api`），含 SQLite 持久化与重启恢复
 
 ## 标准命令
 ```bash
@@ -31,6 +31,8 @@ CGO_ENABLED=0 GOTOOLCHAIN=local go test ./...
 - 豁免：`GET /api/waivers`
 - 发布：`POST /api/packages`、`GET /api/packages/:id`、`POST /api/packages/:id/publish`
 - 自检：`GET /api/selfcheck`
+- 页面：`GET /`，展示演练时间线与冲突证据
+- 页面：`GET /`，展示演练时间线与冲突证据
 
 ## Docker 双架构
 验收侧会分别构建 `linux/amd64` 与 `linux/arm64` 镜像，并以容器内的 `--smoke-test` 作为唯一自检判据。手工构建单个平台时使用仓库内置脚本：

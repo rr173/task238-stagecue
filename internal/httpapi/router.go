@@ -18,6 +18,13 @@ func NewHandler(svc *service.Service) *Handler { return &Handler{svc: svc} }
 // Routes 返回已注册路由的 *http.ServeMux。
 func (h *Handler) Routes() *http.ServeMux {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" || r.Method != http.MethodGet {
+			writeError(w, errNotFound)
+			return
+		}
+		h.webIndex(w, r)
+	})
 	// Use method-aware patterns so every public capability is explicit in the
 	// mux and unsupported methods are rejected before reaching a subrouter.
 	// Go 1.22+ ServeMux supplies the named path values used below.

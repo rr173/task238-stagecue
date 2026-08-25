@@ -22,6 +22,22 @@ func TestHTTPRoutesCreateRehearsalCueAndSelfCheck(t *testing.T) {
 	defer st.Close()
 	server := httptest.NewServer(NewHandler(service.New(st)).Routes())
 	defer server.Close()
+	page, err := http.Get(server.URL + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.StatusCode != http.StatusOK {
+		page.Body.Close()
+		t.Fatalf("web page status=%d", page.StatusCode)
+	}
+	pageBody, err := io.ReadAll(page.Body)
+	page.Body.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(pageBody, []byte("舞台提示时序复核")) {
+		t.Fatal("web page does not contain the stagecue title")
+	}
 
 	var rep model.Rehearsal
 	status := postJSON(t, server.URL+"/api/rehearsals", map[string]string{"name": "http test", "show": "show"}, &rep)
