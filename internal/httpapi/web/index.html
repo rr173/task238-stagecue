@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>舞台提示时序复核</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, sans-serif; }
+    body { max-width: 1100px; margin: 2rem auto; padding: 0 1rem; color: #20242a; }
+    header { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    section { border: 1px solid #d7dce2; border-radius: 10px; padding: 1rem; }
+    select, button { padding: .55rem .7rem; border: 1px solid #aeb7c2; border-radius: 6px; background: white; }
+    button { cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; margin-top: .8rem; }
+    th, td { text-align: left; padding: .45rem; border-bottom: 1px solid #e7eaee; }
+    .status { color: #65717e; min-height: 1.4rem; }
+    .empty { color: #65717e; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>舞台提示时序复核</h1><p>查看统一时钟时间线与冲突证据。</p></div>
+    <button id="refresh">刷新场次</button>
+  </header>
+  <section>
+    <label for="rehearsal">演练版本：</label>
+    <select id="rehearsal"><option value="">加载中…</option></select>
+    <span id="status" class="status"></span>
+  </section>
+  <div class="grid">
+    <section><h2>统一时间线</h2><div id="timeline" class="empty">请选择演练版本。</div></section>
+    <section><h2>冲突证据</h2><div id="conflicts" class="empty">请选择演练版本。</div></section>
+  </div>
+  <script>
+    const select = document.querySelector('#rehearsal');
+    const status = document.querySelector('#status');
+    const timeline = document.querySelector('#timeline');
+    const conflicts = document.querySelector('#conflicts');
+    async function getJSON(path) {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`请求失败（${response.status}）`);
+      return response.json();
+    }
+    function cell(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function renderTable(target, headers, rows) {
+      if (!rows.length) { target.className = 'empty'; target.textContent = '暂无记录。'; return; }
+      target.className = '';
+      target.innerHTML = `<table><thead><tr>${headers.map(h => `<th>${cell(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+    }
+    async function loadDetails() {
+      const id = select.value;
+      if (!id) return;
+      status.textContent = '正在读取…';
+      try {
+        const [events, found] = await Promise.all([
+          getJSON(`/api/rehearsals/${encodeURIComponent(id)}/timeline`),
+          getJSON(`/api/rehearsals/${encodeURIComponent(id)}/conflicts`)
+        ]);
+        renderTable(timeline, ['时间', '来源', '角色', '标签'], events.map(e => `<tr><td>${cell(e.corrected_at)}</td><td>${cell(e.source)}</td><td>${cell(e.role)}</td><td>${cell(e.label)}</td></tr>`));
+        renderTable(conflicts, ['发生时间', '重叠毫秒', '已解决'], found.map(c => `<tr><td>${cell(c.at_ms)}</td><td>${cell(c.overlap_ms)}</td><td>${c.resolved ? '是' : '否'}</td></tr>`));
+        status.textContent = `已加载 ${events.length} 条事件、${found.length} 条冲突`;
+      } catch (error) { status.textContent = error.message; }
+    }
+    async function loadRehearsals() {
+      try {
+        const rehearsals = await getJSON('/api/rehearsals');
+        select.innerHTML = rehearsals.length ? rehearsals.map(r => `<option value="${cell(r.id)}">${cell(r.name)}（${cell(r.state)}）</option>`).join('') : '<option value="">暂无演练版本</option>';
+        await loadDetails();
+      } catch (error) { select.innerHTML = '<option value="">加载失败</option>'; status.textContent = error.message; }
+    }
+    select.addEventListener('change', loadDetails);
+    document.querySelector('#refresh').addEventListener('click', loadRehearsals);
+    loadRehearsals();
+  </script>
+</body>
+</html>
