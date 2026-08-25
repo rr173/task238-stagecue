@@ -98,8 +98,12 @@ func (s *Service) Publish(pkgID string) (*model.CuePackage, error) {
 		return nil, err
 	}
 	nextRehearsalState := model.StateReviewable
+	// 仅在真正转入冻结态时才落 frozen_at，避免在 pending→reviewable 的常规
+	// 发布路径上把 frozen_at 写成非零值——该值是冻结的不变式标记，重启后仍需生效。
+	frozenAt := model.ZeroTime()
 	if rep.State == model.StateReviewable {
 		nextRehearsalState = model.StateFrozen
+		frozenAt = model.Now()
 	}
 	remaining, err := s.st.Conflicts().UnresolvedCount(pkg.RehearsalID)
 	if err != nil {
@@ -111,7 +115,7 @@ func (s *Service) Publish(pkgID string) (*model.CuePackage, error) {
 	if err := s.st.Packages().SetState(pkgID, model.StatePublished, model.Now(), ""); err != nil {
 		return nil, err
 	}
-	if err := s.st.Rehearsals().SetState(pkg.RehearsalID, nextRehearsalState, model.Now()); err != nil {
+	if err := s.st.Rehearsals().SetState(pkg.RehearsalID, nextRehearsalState, frozenAt); err != nil {
 		return nil, err
 	}
 	return s.st.Packages().Get(pkgID)

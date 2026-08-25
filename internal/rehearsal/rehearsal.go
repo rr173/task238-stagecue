@@ -36,7 +36,11 @@ func (s *Service) AddEvent(repID string, src model.SourceKind, seq int, actor mo
 	if err != nil {
 		return nil, err
 	}
-	_ = rep
+	// 冻结后输入不可变：拒绝新增场次事件。frozen_at 是落库的冻结标记，
+	// 重启后仍有效（Get 会将 state 由 frozen 还原为 reviewable，但保留 frozen_at）。
+	if !rep.FrozenAt.IsZero() {
+		return nil, model.ErrFrozenRehearsal
+	}
 	if rawTs <= 0 {
 		return nil, model.ErrInvalidClockSkew
 	}
@@ -97,7 +101,10 @@ func (s *Service) UpdateAnchor(eventID string, rawTimestamp int64) (*model.Stage
 	if err != nil {
 		return nil, err
 	}
-	_ = rep
+	// 冻结后输入不可变：拒绝修改灯光提示锚点。frozen_at 落库标记在重启后仍有效。
+	if !rep.FrozenAt.IsZero() {
+		return nil, model.ErrFrozenRehearsal
+	}
 	if rawTimestamp <= 0 {
 		return nil, model.ErrInvalidClockSkew
 	}
