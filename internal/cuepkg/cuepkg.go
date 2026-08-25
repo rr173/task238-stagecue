@@ -82,6 +82,8 @@ func (s *Service) Draft(repID string) (*model.CuePackage, error) {
 }
 
 // Publish 复核后发布：要求未解决冲突为 0，并标记演练为可发布。
+// 发布前重新校验草稿创建时固化的快照摘要是否仍与当前演练输入一致：
+// 若草稿创建后又新增/变更演练事件（快照失效），拒绝发布，草稿记录仍保持草稿状态。
 func (s *Service) Publish(pkgID string) (*model.CuePackage, error) {
 	pkg, err := s.st.Packages().Get(pkgID)
 	if err != nil {
@@ -93,6 +95,18 @@ func (s *Service) Publish(pkgID string) (*model.CuePackage, error) {
 	rep, err := s.st.Rehearsals().Get(pkg.RehearsalID)
 	if err != nil {
 		return nil, err
+	}
+	// 失效校验：重新组装当前快照并比对不可变摘要，摘要不一致说明草稿创建后演练输入已变更。
+	current, err := s.BuildSnapshot(pkg.RehearsalID)
+	if err != nil {
+		return nil, err
+	}
+	digest, err := s.Digest(current)
+	if err != nil {
+		return nil, err
+	}
+	if digest != pkg.SnapshotDigest {
+		return nil, model.ErrStaleSnapshot
 	}
 	nextRehearsalState := model.StateReviewable
 	if rep.State == model.StateReviewable {

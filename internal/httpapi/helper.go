@@ -46,6 +46,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusBadRequest
 	case model.ErrReleasedPackage:
 		status = http.StatusConflict
+	case model.ErrStaleSnapshot:
+		status = http.StatusConflict
 	}
 	writeJSON(w, status, map[string]string{"error": err.Error()})
 }

@@ -15,6 +15,7 @@ var (
 	ErrCircularRelation  = errors.New("circular device relation")
 	ErrMissingWaiver     = errors.New("waiver evidence missing")
 	ErrReleasedPackage   = errors.New("package already released")
+	ErrStaleSnapshot     = errors.New("draft snapshot is stale")
 )
 
 // State 表示通用状态机状态字符串。
