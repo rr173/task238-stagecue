@@ -49,23 +49,8 @@ func (h *Handler) setAnchor(w http.ResponseWriter, r *http.Request, id string) {
 		writeError(w, model.ErrInvalidClockSkew)
 		return
 	}
-	ev, err := h.svc.Store.Events().Get(id)
+	ev, err := h.svc.Rehearsal.UpdateAnchor(id, body.RawTs)
 	if err != nil {
-		writeError(w, err)
-		return
-	}
-	if ev.RehearsalID == "" {
-		writeError(w, model.ErrNotFound)
-		return
-	}
-	ev.RawTimestamp = body.RawTs
-	skew, err := h.svc.Store.Skews().SkewOf(ev.RehearsalID, ev.Source)
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	ev.CorrectedAt = ev.RawTimestamp - skew
-	if err := h.svc.Store.Events().UpsertBySeq(ev); err != nil {
 		writeError(w, err)
 		return
 	}

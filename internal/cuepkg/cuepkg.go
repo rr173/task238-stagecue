@@ -68,12 +68,12 @@ func (s *Service) Draft(repID string) (*model.CuePackage, error) {
 		return nil, err
 	}
 	pkg := &model.CuePackage{
-		ID:            store.NewID("pkg"),
-		RehearsalID:   repID,
-		Version:       ver,
-		State:         model.StateDraft,
+		ID:             store.NewID("pkg"),
+		RehearsalID:    repID,
+		Version:        ver,
+		State:          model.StateDraft,
 		SnapshotDigest: digest,
-		CreatedAt:     model.Now(),
+		CreatedAt:      model.Now(),
 	}
 	if err := s.st.Packages().Create(pkg); err != nil {
 		return nil, err
@@ -115,6 +115,13 @@ func (s *Service) Supersede(oldID, newID string) error {
 	if oldPkg.State != model.StatePublished {
 		return model.ErrInvalidState
 	}
+	newPkg, err := s.st.Packages().Get(newID)
+	if err != nil {
+		return err
+	}
+	if newPkg.RehearsalID != oldPkg.RehearsalID || newPkg.State != model.StateDraft && newPkg.State != model.StateRehearsing {
+		return model.ErrConflict
+	}
 	if err := s.st.Packages().SetState(oldID, model.StateSuperseded, oldPkg.ReleasedAt, newID); err != nil {
 		return err
 	}
@@ -122,7 +129,7 @@ func (s *Service) Supersede(oldID, newID string) error {
 }
 
 // Get / List 查询。
-func (s *Service) Get(id string) (*model.CuePackage, error)    { return s.st.Packages().Get(id) }
+func (s *Service) Get(id string) (*model.CuePackage, error) { return s.st.Packages().Get(id) }
 func (s *Service) List(repID string) ([]*model.CuePackage, error) {
 	return s.st.Packages().ListByRehearsal(repID)
 }

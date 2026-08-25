@@ -47,13 +47,13 @@ func (h *Handler) getRehearsal(w http.ResponseWriter, r *http.Request, id string
 // addEvent 处理 POST /api/rehearsals/:id/events。
 func (h *Handler) addEvent(w http.ResponseWriter, r *http.Request, id string) {
 	var body struct {
-		Source  string `json:"source"`
-		Seq     int    `json:"seq"`
-		Actor   string `json:"actor"`
-		Role    string `json:"role"`
-		Label   string `json:"label"`
-		RawTs   int64  `json:"raw_ts"`
-		Device  string `json:"device"`
+		Source string `json:"source"`
+		Seq    int    `json:"seq"`
+		Actor  string `json:"actor"`
+		Role   string `json:"role"`
+		Label  string `json:"label"`
+		RawTs  int64  `json:"raw_ts"`
+		Device string `json:"device"`
 	}
 	if err := decodeJSON(r, &body); err != nil {
 		writeError(w, model.ErrInvalidClockSkew)
@@ -107,7 +107,9 @@ func (h *Handler) review(w http.ResponseWriter, r *http.Request, id string) {
 
 // timeline 处理 GET /api/rehearsals/:id/timeline。
 func (h *Handler) timeline(w http.ResponseWriter, r *http.Request, id string) {
-	events, err := h.svc.Align.Timeline(id)
+	// A timeline request is an observable read of the normalized event stream;
+	// refresh corrected timestamps from the persisted source skew before reading.
+	events, err := h.svc.Align.Apply(id)
 	if err != nil {
 		writeError(w, err)
 		return

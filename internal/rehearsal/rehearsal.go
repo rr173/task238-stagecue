@@ -81,3 +81,32 @@ func (s *Service) MarkPending(repID string) error {
 	}
 	return s.st.Rehearsals().SetState(repID, model.StatePending, model.ZeroTime())
 }
+
+// UpdateAnchor changes a cue's source timestamp while preserving the
+// rehearsal lifecycle invariant that frozen input is immutable.
+func (s *Service) UpdateAnchor(eventID string, rawTimestamp int64) (*model.StageEvent, error) {
+	ev, err := s.st.Events().Get(eventID)
+	if err != nil {
+		return nil, err
+	}
+	rep, err := s.st.Rehearsals().Get(ev.RehearsalID)
+	if err != nil {
+		return nil, err
+	}
+	if rep.State == model.StateFrozen {
+		return nil, model.ErrFrozenRehearsal
+	}
+	if rawTimestamp <= 0 {
+		return nil, model.ErrInvalidClockSkew
+	}
+	skew, err := s.st.Skews().SkewOf(ev.RehearsalID, ev.Source)
+	if err != nil {
+		return nil, err
+	}
+	ev.RawTimestamp = rawTimestamp
+	ev.CorrectedAt = rawTimestamp - skew
+	if err := s.st.Events().UpsertBySeq(ev); err != nil {
+		return nil, err
+	}
+	return ev, nil
+}
