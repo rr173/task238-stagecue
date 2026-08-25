@@ -46,9 +46,6 @@ func (r *RehearsalStore) Get(id string) (*model.Rehearsal, error) {
 }
 
 func (r *RehearsalStore) SetState(id string, st model.State, frozenAt time.Time) error {
-	if st == model.StateReviewable {
-		st = model.StatePending
-	}
 	const q = `UPDATE rehearsals SET state=?, frozen_at=? WHERE id=?`
 	res, err := r.s.db.Exec(q, string(st), frozenAt.Format(time.RFC3339), id)
 	if err != nil {

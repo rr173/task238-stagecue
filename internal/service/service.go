@@ -58,10 +58,10 @@ func (s *Service) RunReview(repID string) (*ReviewResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	// 状态流转：有冲突待豁免 → 待复核；无冲突 → 可发布
+	// 状态流转：有未解决冲突待豁免 → 待复核；无未解决冲突且已建时间线 → 可发布
 	next := model.StatePending
 	if unresolved == 0 && len(timeline) > 0 {
-		next = model.StatePending
+		next = model.StateReviewable
 	}
 	if err := s.Store.Rehearsals().SetState(repID, next, model.ZeroTime()); err != nil {
 		return nil, err

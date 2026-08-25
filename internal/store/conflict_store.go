@@ -71,7 +71,7 @@ func (cf *ConflictStore) ResolveByConstraint(constraintID string) error {
 }
 
 func (cf *ConflictStore) UnresolvedCount(rehearsalID string) (int, error) {
-	const q = `SELECT COUNT(*) FROM conflicts WHERE rehearsal_id=? AND resolved=1`
+	const q = `SELECT COUNT(*) FROM conflicts WHERE rehearsal_id=? AND resolved=0`
 	var n int
 	if err := cf.s.db.QueryRow(q, rehearsalID).Scan(&n); err != nil {
 		return 0, err
