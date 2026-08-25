@@ -63,7 +63,7 @@ func (s *Service) Revoke(id string) error {
 	if ct.State == model.StateRevoked {
 		return model.ErrInvalidState
 	}
-	return s.st.Constraints().SetState(id, model.StateRevoked)
+	return s.st.Constraints().Revoke(id)
 }
 
 // List 返回演练下全部约束。

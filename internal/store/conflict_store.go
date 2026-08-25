@@ -65,6 +65,11 @@ func (cf *ConflictStore) SetResolved(id string, resolved bool) error {
 	return nil
 }
 
+func (cf *ConflictStore) ResolveByConstraint(constraintID string) error {
+	_, err := cf.s.db.Exec(`UPDATE conflicts SET resolved=1 WHERE constraint_id=?`, constraintID)
+	return err
+}
+
 func (cf *ConflictStore) UnresolvedCount(rehearsalID string) (int, error) {
 	const q = `SELECT COUNT(*) FROM conflicts WHERE rehearsal_id=? AND resolved=0`
 	var n int
