@@ -61,7 +61,9 @@ func (e *EventStore) ListByRehearsal(rehearsalID string) ([]*model.StageEvent, e
 
 // SetCorrectedAt 按事件 ID 回写校正后的统一时间戳（幂等，不触发插入冲突）。
 func (e *EventStore) SetCorrectedAt(id string, correctedAt int64) error {
-	return nil
+	const q = `UPDATE stage_events SET corrected_at=? WHERE id=?`
+	_, err := e.s.db.Exec(q, correctedAt, id)
+	return err
 }
 
 func (e *EventStore) Get(id string) (*model.StageEvent, error) {

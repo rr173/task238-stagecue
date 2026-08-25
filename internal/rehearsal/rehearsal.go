@@ -42,6 +42,10 @@ func (s *Service) AddEvent(repID string, src model.SourceKind, seq int, actor mo
 	if rawTs <= 0 {
 		return nil, model.ErrInvalidClockSkew
 	}
+	skew, err := s.st.Skews().SkewOf(repID, src)
+	if err != nil {
+		return nil, err
+	}
 	ev := &model.StageEvent{
 		ID:           store.NewID("ev"),
 		RehearsalID:  repID,
@@ -51,6 +55,7 @@ func (s *Service) AddEvent(repID string, src model.SourceKind, seq int, actor mo
 		Role:         role,
 		Label:        label,
 		RawTimestamp: rawTs,
+		CorrectedAt:  rawTs - skew,
 		Device:       device,
 		CreatedAt:    model.Now(),
 	}
