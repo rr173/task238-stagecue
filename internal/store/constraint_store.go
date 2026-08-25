@@ -75,8 +75,5 @@ func (c *ConstraintStore) SetState(id string, st model.State) error {
 }
 
 func (c *ConstraintStore) Revoke(id string) error {
-	if err := c.SetState(id, model.StateRevoked); err != nil {
-		return err
-	}
-	return c.s.Conflicts().ResolveByConstraint(id)
+	return c.SetState(id, model.StateRevoked)
 }
