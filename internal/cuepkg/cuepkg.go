@@ -90,12 +90,16 @@ func (s *Service) Publish(pkgID string) (*model.CuePackage, error) {
 	if pkg.State != model.StateDraft && pkg.State != model.StateRehearsing {
 		return nil, model.ErrInvalidState
 	}
+	if pkg.SnapshotDigest == "" {
+		return nil, model.ErrConflict
+	}
 	rep, err := s.st.Rehearsals().Get(pkg.RehearsalID)
 	if err != nil {
 		return nil, err
 	}
-	if rep.State != model.StateReviewable {
-		return nil, model.ErrConflict
+	nextRehearsalState := model.StateReviewable
+	if rep.State == model.StateReviewable {
+		nextRehearsalState = model.StateFrozen
 	}
 	remaining, err := s.st.Conflicts().UnresolvedCount(pkg.RehearsalID)
 	if err != nil {
@@ -107,7 +111,7 @@ func (s *Service) Publish(pkgID string) (*model.CuePackage, error) {
 	if err := s.st.Packages().SetState(pkgID, model.StatePublished, model.Now(), ""); err != nil {
 		return nil, err
 	}
-	if err := s.st.Rehearsals().SetState(pkg.RehearsalID, model.StateFrozen, model.Now()); err != nil {
+	if err := s.st.Rehearsals().SetState(pkg.RehearsalID, nextRehearsalState, model.Now()); err != nil {
 		return nil, err
 	}
 	return s.st.Packages().Get(pkgID)

@@ -57,6 +57,9 @@ func (s *Service) AddEvent(repID string, src model.SourceKind, seq int, actor mo
 	if err := s.st.Events().UpsertBySeq(ev); err != nil {
 		return nil, err
 	}
+	if err := s.st.Packages().MarkDraftsStale(repID); err != nil {
+		return nil, err
+	}
 	if err := s.st.Rehearsals().SetState(repID, model.StatePending, model.ZeroTime()); err != nil {
 		return nil, err
 	}

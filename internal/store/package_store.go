@@ -52,6 +52,11 @@ func (p *PackageStore) NextVersion(rehearsalID string) (int, error) {
 	return n + 1, nil
 }
 
+func (p *PackageStore) MarkDraftsStale(rehearsalID string) error {
+	_, err := p.s.db.Exec(`UPDATE cue_packages SET snapshot_digest='' WHERE rehearsal_id=? AND state IN (?,?)`, rehearsalID, string(model.StateDraft), string(model.StateRehearsing))
+	return err
+}
+
 func (p *PackageStore) ListByRehearsal(rehearsalID string) ([]*model.CuePackage, error) {
 	const q = `SELECT id,rehearsal_id,version,state,snapshot_digest,released_at,superseded_by,created_at
 		FROM cue_packages WHERE rehearsal_id=? ORDER BY version ASC`
