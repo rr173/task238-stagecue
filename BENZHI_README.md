@@ -33,12 +33,11 @@ CGO_ENABLED=0 GOTOOLCHAIN=local go test ./...
 - 自检：`GET /api/selfcheck`
 
 ## Docker 双架构
-按仓库门禁，使用仓库内置脚本建立 amd64/arm64 双架构基线证明：
+验收侧会分别构建 `linux/amd64` 与 `linux/arm64` 镜像，并以容器内的 `--smoke-test` 作为唯一自检判据。手工构建单个平台时使用仓库内置脚本：
 ```bash
-python3 <repo>/scripts/docker_baseline_validation.py \
-  --project-dir <repo>/task0824/task238-stagecue --verify-and-record
+bash build_benzhi_docker.sh stagecue-check linux/amd64
 ```
-镜像 tag 固定为 `docker-baseline-env`，容器内执行 `--smoke-test` 作为唯一判据。
+脚本参数依次为镜像名和目标平台；容器入口默认执行 `--smoke-test`，也可以显式运行该参数。
 
 ## --smoke-test 契约
 `--smoke-test` 模式下：真实写入演练、事件、提示、约束；校正时钟偏差；构建时间线；检测一处暗场提示早于演员离开安全区的冲突；登记豁免；发布提示包；关闭并重新打开数据库验证重启恢复，最终以退出码 0 结束。该模式不启动 HTTP 长驻服务。
