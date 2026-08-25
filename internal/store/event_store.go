@@ -72,6 +72,20 @@ func (e *EventStore) SetCorrectedAt(id string, correctedAt int64) error {
 	return nil
 }
 
+// UpdateAnchor 原地更新某事件的触发锚点（源时间戳）并回写校正时间。
+// 仅更新 raw_timestamp/corrected_at，保留 id 与 seq，避免在时间线中产生重复记录。
+func (e *EventStore) UpdateAnchor(id string, rawTimestamp, correctedAt int64) error {
+	const q = `UPDATE stage_events SET raw_timestamp=?, corrected_at=? WHERE id=?`
+	res, err := e.s.db.Exec(q, rawTimestamp, correctedAt, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return model.ErrNotFound
+	}
+	return nil
+}
+
 func (e *EventStore) Get(id string) (*model.StageEvent, error) {
 	const q = `SELECT id,rehearsal_id,source,seq,actor,role,label,raw_timestamp,corrected_at,device,created_at
 		FROM stage_events WHERE id=?`

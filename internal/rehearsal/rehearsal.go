@@ -88,8 +88,9 @@ func (s *Service) MarkPending(repID string) error {
 	return s.st.Rehearsals().SetState(repID, model.StatePending, model.ZeroTime())
 }
 
-// UpdateAnchor changes a cue's source timestamp while preserving the
-// rehearsal lifecycle invariant that frozen input is immutable.
+// UpdateAnchor 调整一条提示的触发锚点（重设 raw_ts 并重新校正）。
+// 原地更新同一条记录（保留 id 与 seq），避免在时间线中残留原记录而产生重复条目。
+// 时间线读取时由对齐模块基于最新 skew 重新校正全部事件。
 func (s *Service) UpdateAnchor(eventID string, rawTimestamp int64) (*model.StageEvent, error) {
 	ev, err := s.st.Events().Get(eventID)
 	if err != nil {
@@ -111,9 +112,7 @@ func (s *Service) UpdateAnchor(eventID string, rawTimestamp int64) (*model.Stage
 	}
 	ev.RawTimestamp = rawTimestamp
 	ev.CorrectedAt = rawTimestamp - skew
-	ev.Seq = 0
-	ev.ID = store.NewID("ev")
-	if err := s.st.Events().UpsertBySeq(ev); err != nil {
+	if err := s.st.Events().UpdateAnchor(ev.ID, ev.RawTimestamp, ev.CorrectedAt); err != nil {
 		return nil, err
 	}
 	return ev, nil
